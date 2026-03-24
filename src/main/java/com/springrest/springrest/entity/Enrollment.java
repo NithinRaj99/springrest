@@ -26,10 +26,7 @@ public class Enrollment {
 
     private int progress;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    @JsonIgnore
-    private User user;
+    private Long user;
 
     @ManyToOne
     @JoinColumn(name = "course_id")

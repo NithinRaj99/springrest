@@ -33,7 +33,7 @@ public class ModuleServiceImpl implements ModuleService {
 
     @Override
     public List<CourseModule> getModulesByCourse(Long courseId) {
-        return moduleRepository.findByCourseIdOrderByModuleOrderAsc(courseId);
+        return moduleRepository.findByCourse_IdOrderByModuleOrderAsc(courseId);
     }
 
     @Override

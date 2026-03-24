@@ -4,6 +4,7 @@ import com.springrest.springrest.dto.request.CourseRequest;
 import com.springrest.springrest.dto.response.CourseResponse;
 import com.springrest.springrest.service.CourseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,9 +25,12 @@ public class CourseController {
         return ResponseEntity.ok(courseService.createCourse(token, request));
     }
 
-    @GetMapping
-    public ResponseEntity<List<CourseResponse>> getAllCourses() {
-        return ResponseEntity.ok(courseService.getAllCourses());
+    @GetMapping("/allCourses")
+    public Page<CourseResponse> getAllCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        return courseService.getAllCourses(page, size);
     }
 
     @GetMapping("/{id}")
@@ -53,9 +57,12 @@ public class CourseController {
     }
 
     @GetMapping("/uploader/my-courses")
-    public ResponseEntity<List<CourseResponse>> myCourses(
-            @RequestHeader("Authorization") String token) {
+    public ResponseEntity<Page<CourseResponse>> myCourses(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
-        return ResponseEntity.ok(courseService.getUploadedCourses(token));
+        return ResponseEntity.ok(courseService.getUploadedCourses(token, page,size));
     }
+
 }

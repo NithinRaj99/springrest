@@ -1,15 +1,17 @@
 package com.springrest.springrest.repository;
 
+import com.springrest.springrest.dto.response.CourseResponse;
 import com.springrest.springrest.entity.Course;
-import com.springrest.springrest.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
-    List<Course> findByUploader(User uploader);
+    Page<Course> findByUploader(Long uploader, Pageable pageable);
+
 }
 

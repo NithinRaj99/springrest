@@ -20,12 +20,14 @@ public class CompletedVideo {
 
     private LocalDateTime completedAt;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    private Long user;
 
     @ManyToOne
     @JoinColumn(name = "video_id")
     private Video video;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id")
+    private Course course;
 }
 

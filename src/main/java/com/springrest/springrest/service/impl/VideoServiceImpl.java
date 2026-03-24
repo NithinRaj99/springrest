@@ -1,12 +1,11 @@
 package com.springrest.springrest.service.impl;
 
+import com.springrest.springrest.dto.UserData;
 import com.springrest.springrest.dto.request.VideoRequest;
 import com.springrest.springrest.dto.response.VideoResponse;
 import com.springrest.springrest.entity.CourseModule;
-import com.springrest.springrest.entity.User;
 import com.springrest.springrest.entity.Video;
 import com.springrest.springrest.repository.CourseModuleRepository;
-import com.springrest.springrest.repository.UserRepository;
 import com.springrest.springrest.repository.VideoRepository;
 import com.springrest.springrest.security.jwt.JwtService;
 import com.springrest.springrest.service.VideoService;
@@ -21,14 +20,22 @@ public class VideoServiceImpl implements VideoService {
 
     private final VideoRepository videoRepository;
     private final CourseModuleRepository moduleRepository;
-    private final UserRepository userRepository;
     private final JwtService jwtService;
 
-    private User getUserFromToken(String token) {
+    private UserData getUserFromToken(String token) {
         String jwt = token.replace("Bearer ", "");
-        String email = jwtService.extractEmail(jwt);
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        UserData User = new UserData();
+        if(!jwtService.validateToken(jwt)){
+            throw new RuntimeException("invalid token");
+        }
+
+        User.setUserId(jwtService.extractUserId(jwt));
+        User.setEmail(jwtService.extractEmail(jwt));
+        User.setRole(jwtService.extractRole(jwt));
+        User.setUserName(jwtService.extractUserName(jwt));
+
+
+        return User;
     }
 
     private VideoResponse convert(Video v) {
@@ -44,7 +51,7 @@ public class VideoServiceImpl implements VideoService {
     @Override
     public VideoResponse uploadVideo(String token, Long moduleId, VideoRequest req) {
 
-        User uploader = getUserFromToken(token);
+        UserData uploader = getUserFromToken(token);
 
         if (!uploader.getRole().name().equals("UPLOADER"))
             throw new RuntimeException("Only uploaders can upload videos");
@@ -52,7 +59,7 @@ public class VideoServiceImpl implements VideoService {
         CourseModule module = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new RuntimeException("Module not found"));
 
-        if (!module.getCourse().getUploader().getId().equals(uploader.getId()))
+        if (!module.getCourse().getUploader().equals(uploader.getUserId()))
             throw new RuntimeException("Cannot upload videos to another uploader's module");
 
         Video v = new Video();
@@ -85,12 +92,12 @@ public class VideoServiceImpl implements VideoService {
     @Override
     public VideoResponse updateVideo(String token, Long id, VideoRequest req) {
 
-        User uploader = getUserFromToken(token);
+        UserData uploader = getUserFromToken(token);
 
         Video v = videoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Video not found"));
 
-        if (!v.getModule().getCourse().getUploader().getId().equals(uploader.getId()))
+        if (!v.getModule().getCourse().getUploader().equals(uploader.getUserId()))
             throw new RuntimeException("You can update only your own videos");
 
         v.setVideoTitle(req.getVideoTitle());
@@ -104,12 +111,12 @@ public class VideoServiceImpl implements VideoService {
     @Override
     public void deleteVideo(String token, Long id) {
 
-        User uploader = getUserFromToken(token);
+        UserData uploader = getUserFromToken(token);
 
         Video v = videoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Video not found"));
 
-        if (!v.getModule().getCourse().getUploader().getId().equals(uploader.getId()))
+        if (!v.getModule().getCourse().getUploader().equals(uploader.getUserId()))
             throw new RuntimeException("You can delete only your own videos");
 
         videoRepository.delete(v);

@@ -20,9 +20,9 @@ public class Course {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "uploader_id")
-    private User uploader;
+    private Long uploader;
+
+    private String uploaderName;
 
     private String title;
 
@@ -30,8 +30,6 @@ public class Course {
     private String description;
 
     private String thumbnailUrl;
-
-    private String category;
 
     private Double price;
 
@@ -41,6 +39,10 @@ public class Course {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private CourseCategory category;
 
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CourseModule> modules = new ArrayList<>();

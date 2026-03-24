@@ -8,7 +8,7 @@ public class CourseRequest {
     private String title;
     private String description;
     private String thumbnailUrl;
-    private String category;
+    private Long category;
     private Double price;
     private Level level;  // Beginner, Intermediate, Advanced
 }

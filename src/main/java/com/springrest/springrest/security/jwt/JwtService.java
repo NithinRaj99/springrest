@@ -1,59 +1,79 @@
 package com.springrest.springrest.security.jwt;
 
-import com.springrest.springrest.entity.User;
+import com.springrest.springrest.entity.enums.Role;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 
+import io.jsonwebtoken.Claims;
+
+import java.util.function.Function;
+
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String SECRET_KEY;
+    private final PublicKeyProvider publicKeyProvider;
 
-    private final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 60;        // 1 hour
-    private final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60 * 24;  // 24 hours
-
-    // CREATE ACCESS TOKEN
-    public String generateAccessToken(User user) {
-        return Jwts.builder()
-                .setSubject(user.getEmail())
-                .claim("role", user.getRole().name())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
-                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
-                .compact();
+    public JwtService(PublicKeyProvider publicKeyProvider) {
+        this.publicKeyProvider = publicKeyProvider;
     }
 
-    // CREATE REFRESH TOKEN
-    public String generateRefreshToken(User user) {
-        return Jwts.builder()
-                .setSubject(user.getEmail())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
-                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
-                .compact();
+    // 1. Extract Username (Subject)
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
-    // VALIDATE TOKEN
+    // 2. Extract Specific Claim (e.g., Role)
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    // 3. Validate Token (Check signature & expiration)
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token);
-            return true;
+            // If parsing succeeds, the signature is valid
+            extractAllClaims(token);
+            return !isTokenExpired(token);
         } catch (Exception e) {
             return false;
         }
     }
 
-    // EXTRACT EMAIL FROM TOKEN
-    public String extractEmail(String token) {
-        return Jwts.parser()
-                .setSigningKey(SECRET_KEY)
+    private boolean isTokenExpired(String token) {
+        return extractAllClaims(token).getExpiration().before(new Date());
+    }
+
+    // KEY CHANGE: Use Public Key for parsing
+    public Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(publicKeyProvider.getPublicKey()) // <--- Uses RSA Public Key
+                .build()
                 .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+                .getBody();
+    }
+
+    // 1. Get User ID (Handles the Integer/Long conversion safely)
+    public Long extractUserId(String token) {
+        // JWT libraries often parse numbers as Integer by default.
+        // We get it as a Generic Number first, then convert to Long.
+        Number userId = extractAllClaims(token).get("userId", Number.class);
+        return (userId != null) ? userId.longValue() : null;
+    }
+
+    // 2. Get Email (This was stored in the 'Subject')
+    public String extractEmail(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+    public String extractUserName(String token) {
+        return extractAllClaims(token).get("userName", String.class);
+    }
+
+    // 3. Get Role (Stored as a String)
+    public Role extractRole(String token) {
+        return Role.valueOf(extractAllClaims(token).get("role", String.class));
     }
 }

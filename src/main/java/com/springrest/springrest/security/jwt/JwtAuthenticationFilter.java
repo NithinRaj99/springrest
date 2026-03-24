@@ -1,8 +1,6 @@
 package com.springrest.springrest.security.jwt;
 
 
-import com.springrest.springrest.entity.User;
-import com.springrest.springrest.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,12 +16,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -39,32 +37,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-        String email = jwtService.extractEmail(token);
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        // Validate Token without hitting Database
+        if (SecurityContextHolder.getContext().getAuthentication() == null && jwtService.validateToken(token)) {
 
-            User user = userRepository.findByEmail(email).orElse(null);
+            Long userId = jwtService.extractUserId(token);
 
-            if (user != null && jwtService.validateToken(token)) {
+            // Extract role from token claim (Ensure your Auth service puts "role" in the token!)
+            // If your token claim is named differently, update "role" below.
+            String role = jwtService.extractAllClaims(token).get("role", String.class);
 
-                List<SimpleGrantedAuthority> authorities =
-                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                user.getEmail(),
-                                null,
-                                authorities
-                        );
+            // Create Authority List (Handle null roles safely if needed)
+            List<SimpleGrantedAuthority> authorities = (role == null) ? List.of() :
+                    List.of(new SimpleGrantedAuthority("ROLE_" + role));
 
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            userId,
+                            null,
+                            authorities
+                    );
 
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         chain.doFilter(request, response);
     }
 }
-
